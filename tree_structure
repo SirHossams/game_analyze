@@ -1,0 +1,341 @@
+#include <iostream>
+#include <string>
+typedef int data;
+typedef int player;
+
+using namespace std;
+
+class vertex
+{
+protected:
+	data d;
+	vertex* next_sibling;
+	vertex* next_child;
+public:
+	int levl;
+	char strategy;
+	player p;
+	int id;
+	int sibling_pos;
+	int address[20];
+	bool is_terminal;
+	vertex(player r)
+	{
+		d=0;
+		p=r;
+		strategy=1;
+		levl=1;
+		next_sibling=NULL;
+		next_child=NULL;
+		id=0;
+		sibling_pos=0;
+		for (int i=0;i<20;i++)
+			address[i]=0;
+	}
+	vertex(int i,player r)
+	{
+		d=i;
+		p=r;
+		strategy='O';
+		levl=1;
+		next_sibling=NULL;
+		next_child=NULL;
+		id=0;
+		sibling_pos=0;
+		for (int i=0;i<20;i++)
+			address[i]=0;
+	}
+	vertex(vertex &v)
+	{
+		d=v.d;
+		levl=v.levl;
+		strategy=v.strategy;
+		p=v.p;
+	}
+	vertex* new_child(int x,player r)
+	{
+		vertex* temp=new vertex(x,r);
+		next_child=temp;
+		temp->levl+=levl;
+		temp->strategy='a';
+		temp->sibling_pos=0;
+		int s=temp->levl-1;
+		for (int i=0;i<s;i++)
+			temp->address[i]=address[i];
+		temp->address[s]=temp->sibling_pos;
+		is_terminal=false;
+		temp->is_terminal=true;
+		return temp;
+	}
+	vertex* new_sibling(int x,player r)
+	{
+		vertex* temp=new vertex(x,r);
+		next_sibling=temp;
+		temp->strategy=strategy+1;
+		next_sibling->levl=levl;
+		temp->sibling_pos=sibling_pos+1;
+		int s=temp->levl-1;
+		for (int i=0;i<s;i++)
+			temp->address[i]=address[i];
+		temp->address[s]=temp->sibling_pos;
+		temp->is_terminal=true;
+		return temp;
+	}
+	friend class tree_operator;
+	friend class tree_distributor;
+};
+
+class tree_operator
+{
+public:
+	int maxi;
+	tree_operator(){maxi=0;}
+	void post_show_tree(vertex* head_point)
+	{
+		cout << " " << head_point->d << " " << head_point->strategy << " " << head_point->p << endl;
+		if (head_point->next_child!=NULL)
+		post_show_tree(head_point->next_child);
+		if (head_point->next_sibling==NULL) {
+			cout << endl;
+			return;
+		}
+		else
+		post_show_tree(head_point->next_sibling);
+	}
+	void pre_show_tree(vertex* head_point)
+	{
+		cout << head_point->d << " " << head_point->strategy << " " << head_point->p << endl;
+		if (head_point->next_sibling!=NULL)
+			pre_show_tree(head_point->next_sibling);
+		if (head_point->next_child==NULL)return;
+		else
+			pre_show_tree(head_point->next_child);
+	}
+	void player_seek(player r,vertex* head_point)
+	{
+		if (head_point->p==r)
+		cout << head_point->d << endl;
+		if (head_point->next_child!=NULL)
+		player_seek(r,head_point->next_child);
+		if (head_point->next_sibling==NULL) {
+			cout << endl;
+			return;
+		}
+		else
+		player_seek(r,head_point->next_sibling);
+	}
+	void pre_show_player_strategies(vertex* head_point,player r)
+	{
+		if (head_point->p==r) {
+			if (head_point->next_child!=NULL) {
+		vertex* temp=head_point->next_child;
+		while(temp!=NULL) {
+			cout << temp->strategy;
+			temp=temp->next_sibling;
+		}
+		}
+			cout << endl;
+		}
+		if (head_point->next_sibling!=NULL)
+			pre_show_player_strategies(head_point->next_sibling,r);
+		if (head_point->next_child==NULL)return;
+		else
+			pre_show_player_strategies(head_point->next_child,r);
+	}
+	int no_of_vertices(vertex* head_point)
+	{
+		int count=0;
+		if (head_point->next_child!=NULL) {
+			count+=no_of_vertices(head_point->next_child);
+		}
+		if (head_point->next_sibling!=NULL) {
+			count+=no_of_vertices(head_point->next_sibling);
+		}
+		count++;
+		return count;
+	}
+	void id_distribute(vertex* head_point)
+	{
+		static int i=0;
+		head_point->id=i;
+		i++;
+		if (head_point->next_child!=NULL)
+		id_distribute(head_point->next_child);
+		if (head_point->next_sibling!=NULL)
+		id_distribute(head_point->next_sibling);
+	}
+	int no_player_vertices(int p1,vertex* head_point)
+	{
+		int count=0;
+		if (head_point->next_child!=NULL)
+			count+=no_player_vertices(p1,head_point->next_child);
+		if (head_point->next_sibling!=NULL)
+			count+=no_player_vertices(p1,head_point->next_sibling);
+		if (head_point->p==p1)
+			count++;
+		return count;
+	}
+	int depth(vertex* head_point)
+	{
+		vertex* temp=head_point;
+		if (maxi<head_point->levl)
+			maxi=head_point->levl;
+		if (head_point->next_child!=NULL)
+		return depth(head_point->next_child);
+		if (head_point->next_sibling!=NULL)
+		return depth(head_point->next_sibling);
+		return maxi;
+	}
+};
+
+class tree_distributor
+{
+public:
+	int c,d;
+	int maxi;
+	int i;
+	tree_distributor(){
+		maxi=0;c=0;d=0;i=0;
+	}
+	void put_player_vertices(int p1,vertex* A[],vertex* head_point)
+	{
+		if (head_point->p==p1) {
+			A[c]=head_point;
+			c++;
+		}
+		if (head_point->next_child!=NULL)
+		put_player_vertices(p1,A,head_point->next_child);
+		if (head_point->next_sibling!=NULL)
+		put_player_vertices(p1,A,head_point->next_sibling);
+	}
+	int vertex_children(vertex* A[],vertex* targeted_vertex)
+	{
+		int i=1;
+		A[0]=targeted_vertex->next_child;
+		A[1]=A[0]->next_sibling;
+		while (A[i]->next_sibling!=NULL) {
+			A[i+1]=A[i]->next_sibling;
+			i++;
+		}
+		return i+1;
+	}
+	int vertex_children_no(vertex* targeted_vertex)
+	{
+		int i=0;
+		vertex* temp=targeted_vertex;
+		if (temp->next_child!=NULL)
+		temp=temp->next_child;
+		else return 0;
+		while(temp->next_sibling!=NULL) {
+			i++;
+			temp=temp->next_sibling;
+		}
+		return i+1;
+	}
+	int vertex_siblings_no(vertex* targeted_vertex)
+	{
+		int i=0;
+		vertex* temp=targeted_vertex;
+		while (temp->next_sibling!=NULL)
+		{
+			i++;
+			temp=temp->next_sibling;
+		}
+		return i;
+	}
+	int max_children(vertex* head_point)
+	{
+		vertex* temp=head_point;
+		int vcn=vertex_children_no(head_point);
+		if (maxi<vcn)
+			maxi=vcn;
+		if (head_point->next_child!=NULL)
+		return max_children(head_point->next_child);
+		if (head_point->next_sibling!=NULL)
+		return max_children(head_point->next_sibling);
+		return maxi;
+	}
+	void terminal_distr(vertex* head_point,vertex* G[])
+	{
+		if (head_point->next_child!=NULL)
+			terminal_distr(head_point->next_child,G);
+		if (head_point->next_sibling!=NULL)
+			terminal_distr(head_point->next_sibling,G);
+		if (head_point->is_terminal==true)
+		{
+			G[i]=head_point;
+			i++;
+		}
+	}
+};
+
+struct payoff
+{
+	int path[30];
+	int x,y; 
+	payoff()
+	{
+		for (int i=0;i<30;i++)
+			path[i]=0;
+		x=0;
+		y=0;
+	}
+	payoff(int A[],int s,int n,int m)
+	{
+		for (int i=0;i<s;i++)
+			path[i]=A[i];
+		x=n;
+		y=m;
+	}
+void display(int s)
+{
+	for (int i=0;i<s;i++)
+		cout << path[i];
+	cout << " " << x << " " << y << endl;
+}
+};
+
+void display_best_path(payoff poff[],int n,int boundary)
+{
+	int maxi=poff[0].x;
+	int payoff_index=0;
+	for (int i=0;i<n;i++)
+		if (maxi<poff[i].x) {
+			maxi=poff[i].x;
+			payoff_index=i;
+		}
+		for (int i=0;i<boundary;i++)
+			cout << poff[payoff_index].path[i];
+		cout << endl;
+}
+
+int main()
+{
+	tree_operator TO;tree_distributor TD;
+	vertex mainv(200,1);
+	vertex* child0=mainv.new_child(23,1);
+	vertex* sibling0=child0->new_sibling(44,2);
+	vertex* child00=child0->new_child(324,2);
+	vertex* sibling00=child00->new_sibling(23,2);
+	vertex* child10=sibling0->new_child(43,1);
+	vertex* sibling10=child10->new_sibling(23,2);
+	vertex* child101=sibling10->new_child(35,2);
+	vertex* child100=child10->new_child(344,1);
+	vertex* sibling100=child100->new_sibling(12,1);
+	vertex* sibling101=sibling100->new_sibling(32,2);
+	vertex* G[20]={NULL};
+	TD.terminal_distr(&mainv,G);
+	int PO[2][6]={{2,42,4,52,1,0},{23,10,-2,6,0,-10}};
+	payoff poff[6];
+	for (int i=0;i<6;i++) {
+		for (int j=0;j<4;j++)
+			poff[i].path[j]=G[i]->address[j];
+		poff[i].x=PO[0][i];
+		poff[i].y=PO[1][i];
+	}
+	for (int i=0;i<6;i++)
+		poff[i].display(4);
+	display_best_path(poff,6,4);
+	system("pause");
+	return 0;
+}
